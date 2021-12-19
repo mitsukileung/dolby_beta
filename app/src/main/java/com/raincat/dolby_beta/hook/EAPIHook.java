@@ -4,110 +4,115 @@ import android.content.Context;
 import android.net.Uri;
 import android.text.TextUtils;
 
-import com.raincat.dolby_beta.db.ExtraDao;
-import com.raincat.dolby_beta.utils.CloudMusicPackage;
-import com.raincat.dolby_beta.utils.Setting;
-
-import org.json.JSONObject;
-
-import java.util.List;
-
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
+
+import com.raincat.dolby_beta.db.CloudDao;
+import com.raincat.dolby_beta.helper.ClassHelper;
+import com.raincat.dolby_beta.helper.EAPIHelper;
+import com.raincat.dolby_beta.helper.SettingHelper;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 
 /**
  * <pre>
  *     author : RainCat
- *     time   : 2019/10/24
- *     desc   : API hook
+ *     e-mail : nining377@gmail.com
+ *     time   : 2021/04/16
+ *     desc   : 网络访问hook
  *     version: 1.0
  * </pre>
  */
 
-public class EAPIHook extends EAPIBase {
+public class EAPIHook {
     public EAPIHook(final Context context) {
-        XposedBridge.hookMethod(CloudMusicPackage.HttpResponse.getResultMethod(), new XC_MethodHook() {
+        XposedBridge.hookMethod(ClassHelper.HttpResponse.getResultMethod(context), new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                if ((!(param.getResult() instanceof String) && !(param.getResult() instanceof JSONObject))) {
+                //代理和黑胶都未开启
+                if (!SettingHelper.getInstance().isEnable(SettingHelper.black_key)
+                        && !SettingHelper.getInstance().isEnable(SettingHelper.proxy_master_key))
                     return;
-                }
+                //返回参数不对
+                if ((!(param.getResult() instanceof String) && !(param.getResult() instanceof JSONObject)))
+                    return;
+                //返回参数为空
                 String original = param.getResult().toString();
                 if (TextUtils.isEmpty(original)) {
                     return;
                 }
-
-                CloudMusicPackage.HttpResponse httpResponse = new CloudMusicPackage.HttpResponse(param.thisObject);
-                Object eapi = httpResponse.getEapi();
-                Uri uri = CloudMusicPackage.HttpApi.getUri(eapi);
+                ClassHelper.HttpResponse httpResponse = new ClassHelper.HttpResponse(param.thisObject);
+                Object eapi = httpResponse.getEapi(context);
+                Uri uri = ClassHelper.HttpUrl.getUri(context, eapi);
                 if (!uri.getPath().contains("/eapi/"))
                     return;
+                String path = uri.getPath();
 
-                String path = uri.getPath().substring("/eapi/".length());
-                String modified = null;
-
-                if ("v1/playlist/manipulate/tracks".equals(path)) {
-                    modified = modifyPlaylistManipulateApi(context, CloudMusicPackage.HttpParams.getParams(eapi), original);
-                } else if ("song/like".equals(path)) {
-                    modified = modifyLike(context, CloudMusicPackage.HttpParams.getParams(eapi), original);
+                if (path.contains("v1/playlist/manipulate/tracks")) {
+                    original = EAPIHelper.modifyManipulate(ClassHelper.HttpParams.getParams(context, eapi), original);
+                } else if (path.contains("song/like")) {
+                    original = EAPIHelper.modifyLike(ClassHelper.HttpParams.getParams(context, eapi), original);
                 } else if (path.contains("sound/mobile") || path.contains("page=audio_effect")) {
-                    modified = modifyEffect(original);
+                    original = EAPIHelper.modifyEffect(original);
                 } else if (path.contains("batch")) {
-                    getUserId(context, original);
-                    //去除评论广告
                     if (original.contains("comment\\/banner\\/get")) {
                         JSONObject jsonObject = new JSONObject(original);
-                        jsonObject.put("/api/content/exposure/comment/banner/get", "{\"code\":200}");
-                        modified = jsonObject.toString();
-                        modified = modified.replace("\"{\\\"code\\\":200}\"", "{\"code\":200}");
-                    }
-                    if (original.contains("\\/api\\/v1\\/content\\/exposure\\/comment\\/banner\\/get")) {
+                        if (!jsonObject.isNull("/api/content/exposure/comment/banner/get")) {
+                            JSONObject object = new JSONObject();
+                            object.put("code", 200);
+                            object.put("data", new JSONObject());
+                            jsonObject.put("/api/content/exposure/comment/banner/get", object);
+                        }
+                        if (!jsonObject.isNull("/api/v1/content/exposure/comment/banner/get")) {
+                            JSONObject object = jsonObject.getJSONObject("/api/v1/content/exposure/comment/banner/get");
+                            JSONObject data = object.getJSONObject("data");
+                            data.put("count", 0);
+                            data.put("offset", 999999999);
+                            data.put("records", new JSONArray());
+                            data.put("message", "");
+                            object.put("data", data);
+                            jsonObject.put("/api/v1/content/exposure/comment/banner/get", object);
+                        }
+                        original = jsonObject.toString();
+                    } else if (SettingHelper.getInstance().isEnable(SettingHelper.fix_comment_key) &&
+                            original.contains("\\/api\\/resource\\/comment\\/musiciansaid\\/authors")) {
                         JSONObject jsonObject = new JSONObject(original);
-                        jsonObject.put("/api/v1/content/exposure/comment/banner/get", "{-\"code-\":200,-\"data-\":{-\"count-\":0,-\"offset-\":999999999,-\"records-\":[]},-\"message-\":-\"-\"}");
-                        modified = jsonObject.toString();
-                        modified = modified.replace("-\\", "").replace("\"\\/api\\/v1\\/content\\/exposure\\/comment\\/banner\\/get\":\"", "\"\\/api\\/v1\\/content\\/exposure\\/comment\\/banner\\/get\":")
-                                .replace("\"message\":\"\"}\"", "\"message\":\"\"}");
-                    }
-                    //解除灰色
-                    if (Setting.isGrayEnabled() || Setting.isProxyEnabled())
-                        modified = modifyByRegex(modified == null ? original : modified);
-                } else if (path.contains("login") || path.contains("register")) {
-                    Object response = httpResponse.getResponseObject();
-                    CloudMusicPackage.OKHttp3Response okHttp3Response = new CloudMusicPackage.OKHttp3Response(response);
-                    Object header = okHttp3Response.getHeadersObject();
-                    CloudMusicPackage.OKHttp3Header okHttp3Header = new CloudMusicPackage.OKHttp3Header(header);
-                    String[] headers = okHttp3Header.getHeaders();
-                    Start:
-                    for (int i = 0; i < headers.length; i++) {
-                        if (headers[i].toLowerCase().contains("set-cookie")) {
-                            String[] cookies = headers[i + 1].split(";");
-                            for (String cookie : cookies) {
-                                if (cookie.contains("MUSIC_U")) {
-                                    ExtraDao.getInstance(context).saveExtra("cookie", cookie);
-                                    break Start;
+                        JSONObject object = jsonObject.getJSONObject("/api/resource/comment/musiciansaid/authors");
+                        JSONObject data = object.getJSONObject("data");
+                        JSONArray team = data.getJSONArray("team");
+                        for (int i = 0; i < team.length(); i++) {
+                            JSONObject o = team.getJSONObject(i);
+                            String s = o.optString("authorTypeText");
+                            if (s != null && s.equals("作者")) {
+                                long uid = o.optLong("uid");
+                                long artistId = o.optLong("artistId");
+                                if (uid > 2147483647) {
+                                    JSONObject artistJSONObject = jsonObject.getJSONObject("/api/auth/artist");
+                                    JSONObject authJSONObject = artistJSONObject.getJSONObject("auth");
+                                    while (uid > 2147483647)
+                                        uid = uid / 10;
+                                    authJSONObject.put(artistId + "", uid);
+                                    artistJSONObject.put("auth", authJSONObject);
+                                    jsonObject.put("/api/auth/artist", artistJSONObject);
+                                    original = jsonObject.toString();
                                 }
                             }
                         }
                     }
-                } else {
-                    if (!Setting.isGrayEnabled() && !Setting.isProxyEnabled())
-                        return;
-                    List<String> segments = uri.getPathSegments();
-                    if (segments.contains("album")
-                            || segments.contains("artist")
-                            || segments.contains("play")
-                            || segments.contains("playlist")
-                            || segments.contains("radio")
-                            || segments.contains("song")
-                            || segments.contains("songs")
-                            || segments.contains("search")) {
-                        modified = modifyByRegex(original);
-                    }
+                } else if (path.contains("upload/cloud/info/v2")) {
+                    JSONObject jsonObject = new JSONObject(original);
+                    jsonObject = jsonObject.getJSONObject("privateCloud");
+                    jsonObject = jsonObject.getJSONObject("simpleSong");
+                    original = original.replace("\"waitTime\":60,", "\"waitTime\":5,");
+                    CloudDao.getInstance(context).saveSong(Integer.parseInt(jsonObject.getString("id")), original);
+                } else if (path.contains("cloud/pub/v2")) {
+                    String songId = EAPIHelper.decrypt(ClassHelper.HttpParams.getParams(context, eapi).get("params")).getString("songid");
+                    EAPIHelper.uploadCloud(songId);
+                    original = CloudDao.getInstance(context).getSong(Integer.parseInt(songId));
                 }
-
-                if (modified != null) {
-                    param.setResult(param.getResult() instanceof JSONObject ? new JSONObject(modified) : modified);
-                }
+                param.setResult(param.getResult() instanceof JSONObject ? new JSONObject(original) : original);
             }
         });
     }

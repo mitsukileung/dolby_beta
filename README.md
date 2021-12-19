@@ -1,24 +1,54 @@
 # 杜比大喇叭β版
-### 大喇叭已经很久不维护了，感谢大家的喜爱与支持，大喇叭将再次迎来改版并修复一些遗留的问题，可能需要一到两个星期，敬请期待。
 
-杜比大喇叭的β版迎来了重大的革新，合并了[UnblockMusic Pro](https://github.com/nining377/UnblockMusicPro_Xposed)的所有功能且更加强大，同时UnblockMusicPro_Xposed项目将会停止维护，让我们欢送这位老朋友！
+[![Stars](https://img.shields.io/github/stars/nining377/dolby_beta?label=Stars)](https://github.com/nining377)
+[![Release](https://img.shields.io/github/v/release/nining377/dolby_beta?label=Release)](https://github.com/nining377/dolby_beta/releases/latest)
+[![Download](https://img.shields.io/github/downloads/nining377/dolby_beta/total)](https://github.com/nining377/dolby_beta/releases/latest)
+[![License](https://img.shields.io/github/license/nining377/dolby_beta?label=License)](https://choosealicense.com/licenses/mit/)
+
+#### 杜比大喇叭β是一款网易云音乐的音源代理模块，初衷只是我对网易云音乐的热爱，希望让更多的人使用网易云。
+#### 模块工作原理为音源替换而非破解，所以单曲付费与无版权歌曲有几率匹配错误，真心支持歌手请付费！
+#### 模块工作原理为音源替换而非破解，所以单曲付费与无版权歌曲有几率匹配错误，真心支持歌手请付费！
+#### 模块工作原理为音源替换而非破解，所以单曲付费与无版权歌曲有几率匹配错误，真心支持歌手请付费！
+#### 重要事情得说三遍，不要再因为不匹配而提交issue了。
+
+杜比大喇叭β 3.X会有以下改变：
+-   编译版本提高至29并采用AndroidX API
+-   模块被嵌入到网易云音乐的设置中
+-   由于Android R对可执行文件的进一步限制，摒弃了2.X手动选择脚本与Node的方式
+-   当前版本以稳定为主，杜比大喇叭β将能无缝适配最新版网易云音乐，如有问题请提交issue
+-   因本人不使用太极，所以不保证太极等非root框架可以顺利运行，欢迎Fork适配
+
+*网易云在7.X版本后对非会员暗降了音质，由标准128K、较高192K、极高320K降低为标准96K、较高128K、极高256K，导致匹配逻辑出现问题，鉴于后续版本都在添加无用功能，推荐只听音乐的云村居民使用431或者600版本以获得最佳体验。*
 
 [快帮我点小星星呀，我要好多好多的小星星！](https://github.com/nining377/dolby_beta)
 
-### ~~！！！因[nondanee/UnblockNeteaseMusic](https://github.com/nondanee/UnblockNeteaseMusic)已长期不维护，故不再提供模块内更新脚本的功能！！！~~
-### 请使用[1715173329/UnblockNeteaseMusic](https://github.com/1715173329/UnblockNeteaseMusic/tree/enhanced)提供的脚本。
+## 下载方式
 
-# 使用方法
-
-考虑到部分人只使用模块的精简功能，且UnblockMusic Pro在SD卡目录中释放脚本文件广为人诟病，杜比大喇叭β版将不再内置脚本文件，需要的可自行下载。
+[GitHub Release](https://github.com/nining377/dolby_beta/releases/latest)
 
 [杜比大喇叭β版](https://wwi.lanzoui.com/b0cqxgwje) 访问密码：brdb
 
-[脚本与node文件，按需取用](https://wwi.lanzoui.com/b0cr00nve) 访问密码：1iti
+[网易云音乐模块内嵌版（无需安装模块，适合不想用太极等框架的非root用户）](https://github.com/nining377/dolby_beta/issues/142)
 
-# 主要功能
+## TODO
+
+-   尽可能保证不因模块造成crash（改版网易云往往经过二次混淆，将得不到适配）
+-   部分美化功能的添加
+-   更稳定的代理方式
+
+## 主要功能
 
 <img src="https://raw.githubusercontent.com/nining377/dolby_beta/master/image/img_01.png" width="50%">
+
+## 致谢
+
+[nondanee/UnblockNeteaseMusic](https://github.com/nondanee/UnblockNeteaseMusic)
+
+[Unblock Netease Music 维护小组](https://github.com/UnblockNeteaseMusic/server)
+
+[bin456789/Unblock163MusicClient-Xposed](https://github.com/bin456789/Unblock163MusicClient-Xposed)
+
+[Flysky12138/UnblockNeteaseMusic-Android](https://github.com/Flysky12138/UnblockNeteaseMusic-Android)
 
 ## 许可
 
